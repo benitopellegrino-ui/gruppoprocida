@@ -1,0 +1,25 @@
+:root { --bg:#0a0f1c; --card:#111832; --accent:#1c44ff; --text:#e8eeff; --muted:#94a3b8; --ok:#10b981; --no:#ef4444; }
+*{box-sizing:border-box}
+body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,'Helvetica Neue',Arial;color:var(--text);background:linear-gradient(180deg,#0a0f1c,#0b1022);min-height:100vh;}
+.container{max-width:680px;margin:0 auto;padding:20px}
+.header{display:flex;align-items:center;gap:12px;margin:10px 0 18px}
+.icon{width:42px;height:42px;border-radius:12px;background:var(--accent);display:flex;align-items:center;justify-content:center;font-weight:700}
+.title{font-size:1.4rem;font-weight:800;letter-spacing:.4px}
+.badge{margin-left:auto;background:#0f172a;color:#cbd5e1;border:1px solid #243b7b;padding:6px 12px;border-radius:999px;font-size:.8rem}
+.card{background:rgba(17,24,52,0.8);border:1px solid #1f2a4d;box-shadow:0 10px 25px rgba(0,0,0,.35);backdrop-filter:blur(8px);border-radius:18px;overflow:hidden}
+.toolbar{display:flex;gap:8px;align-items:center;justify-content:space-between;padding:12px 12px;border-bottom:1px solid #1f2a4d;background:rgba(13,20,42,.6)}
+.counters{display:flex;gap:10px;align-items:center}
+.counter{display:flex;gap:8px;align-items:center;background:#0f172a;border:1px solid #223161;padding:8px 10px;border-radius:12px;font-size:.9rem}
+.counter.ok::before{content:'✅';}
+.counter.no::before{content:'❌';}
+.reset{background:#0f172a;border:1px solid #374585;color:#cbd5e1;border-radius:12px;padding:8px 12px;cursor:pointer}
+.reset:hover{border-color:#4b63c7}
+.list{padding:8px 12px}
+.item{display:flex;align-items:center;gap:12px;padding:10px 8px;border-bottom:1px dashed #1f2a4d}
+.item:last-child{border-bottom:none}
+.name{flex:1}
+.toggle{width:22px;height:22px;border:2px solid #3a4aa3;border-radius:6px;display:flex;align-items:center;justify-content:center;cursor:pointer}
+.toggle.checked{background:var(--accent);border-color:var(--accent)}
+.strike{text-decoration: line-through; opacity:.55}
+.footer{padding:12px;color:var(--muted);font-size:.8rem;text-align:center}
+@media (display-mode: standalone) { .badge{display:none} }

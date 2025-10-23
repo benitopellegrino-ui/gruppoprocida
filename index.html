@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>GRUPPO PROCIDA</title>
+<link rel="manifest" href="manifest.json">
+<link rel="stylesheet" href="styles.css">
+<meta name="theme-color" content="#1c44ff">
+<script>
+if ('serviceWorker' in navigator) { window.addEventListener('load', ()=> navigator.serviceWorker.register('./sw.js')); }
+</script>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div class="icon">👥</div>
+      <div class="title">GRUPPO PROCIDA</div>
+      <div class="badge">Installabile</div>
+    </div>
+
+    <div class="card">
+      <div class="toolbar">
+        <div class="counters">
+          <div class="counter ok" id="presenti">Presenti: 0</div>
+          <div class="counter no" id="assenti">Assenti: 0</div>
+        </div>
+        <button class="reset" id="resetBtn">Reset</button>
+      </div>
+      <div class="list" id="list"></div>
+    </div>
+
+    <div class="footer">Stato salvato sul dispositivo (persistenza locale). • Tap per marcare, Reset per azzerare.</div>
+  </div>
+
+<script>
+const NAMES = ["Celano Gerardina", "Celano Gerardo", "Celano Maria", "D'aiutolo Maria", "De Maio Gerardo", "De Maio Nicoletta", "Della Sala Alessio", "Giannatiempo Concetta", "Giannatiempo Pasquale", "Granozio Anacleto", "Granozio Giuseppina", "Ignarro Cristina", "Pellegrino Benito", "Pellegrino Noemi", "Procida Franca", "Procida Paolo", "Salviati Angela", "Salviati Mario"];
+const KEY = 'procida_presence_v1';
+
+function loadState() {
+  try { return JSON.parse(localStorage.getItem(KEY)) || {}; } catch(e) { return {}; }
+}
+function saveState(state) { localStorage.setItem(KEY, JSON.stringify(state)); }
+function computeCounts(state) {
+  let pres = 0;
+  for (const n of NAMES) if (state[n]) pres++;
+  return { pres, ass: NAMES.length - pres };
+}
+
+function render() {
+  const state = loadState();
+  const list = document.getElementById('list');
+  list.innerHTML = '';
+  NAMES.forEach(n => {
+    const wrap = document.createElement('div');
+    wrap.className = 'item';
+    const toggle = document.createElement('div');
+    toggle.className = 'toggle' + (state[n] ? ' checked' : '');
+    toggle.addEventListener('click', ()=> { state[n] = !state[n]; saveState(state); render(); });
+    const name = document.createElement('div');
+    name.className = 'name' + (state[n] ? ' strike' : '');
+    name.textContent = n;
+    name.addEventListener('click', ()=> { state[n] = !state[n]; saveState(state); render(); });
+    wrap.appendChild(toggle);
+    wrap.appendChild(name);
+    list.appendChild(wrap);
+  });
+  const c = computeCounts(state);
+  document.getElementById('presenti').textContent = 'Presenti: ' + c.pres;
+  document.getElementById('assenti').textContent = 'Assenti: ' + c.ass;
+}
+
+document.getElementById('resetBtn').addEventListener('click', ()=> {
+  const empty = {};
+  saveState(empty);
+  render();
+});
+
+render();
+</script>
+</body>
+</html>

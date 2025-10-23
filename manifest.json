@@ -1,0 +1,16 @@
+{
+  "name": "GRUPPO PROCIDA",
+  "short_name": "Procida",
+  "description": "Checklist presenze — GRUPPO PROCIDA (persistenza locale, contatori, reset).",
+  "icons": [
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ],
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#1c44ff",
+  "theme_color": "#1c44ff"
+}
