@@ -1,7 +1,7 @@
 {
   "name": "GRUPPO PROCIDA",
   "short_name": "Procida",
-  "description": "Checklist presenze — GRUPPO PROCIDA (persistenza locale, contatori, reset).",
+  "description": "Checklist presenze — GRUPPO PROCIDA (WA Quick Msg, contatori, reset).",
   "icons": [
     {
       "src": "icon-512.png",
