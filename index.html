@@ -5,10 +5,16 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>GRUPPO PROCIDA</title>
 <link rel="manifest" href="manifest.json">
-<link rel="stylesheet" href="styles.css">
+<link rel="stylesheet" href="styles.css?v=3">
 <meta name="theme-color" content="#1c44ff">
 <script>
 if ('serviceWorker' in navigator) { window.addEventListener('load', ()=> navigator.serviceWorker.register('./sw.js')); }
+function forceUpdate() {
+  if (navigator.serviceWorker?.controller) {
+    navigator.serviceWorker.controller.postMessage({ type: 'SKIP_WAITING' });
+  }
+  caches.keys().then(keys => keys.forEach(k => caches.delete(k))).finally(()=> location.reload(true));
+}
 </script>
 </head>
 <body>
@@ -25,7 +31,10 @@ if ('serviceWorker' in navigator) { window.addEventListener('load', ()=> navigat
           <div class="counter ok" id="presenti">Presenti: 0</div>
           <div class="counter no" id="assenti">Assenti: 0</div>
         </div>
-        <button class="reset" id="resetBtn">Reset</button>
+        <div style="display:flex; gap:8px;">
+          <button class="reset" onclick="forceUpdate()">Aggiorna app</button>
+          <button class="reset" id="resetBtn">Reset</button>
+        </div>
       </div>
       <div class="list" id="list"></div>
     </div>
@@ -35,7 +44,7 @@ if ('serviceWorker' in navigator) { window.addEventListener('load', ()=> navigat
 
 <script>
 const ENTRIES = [{"full": "Celano Gerardina", "first": "Gerardina", "phone": "+393393156011"}, {"full": "Celano Gerardo", "first": "Gerardo", "phone": "+393405436406"}, {"full": "Celano Maria", "first": "Maria", "phone": "+393891014974"}, {"full": "D'aiutolo Maria", "first": "Maria", "phone": "+393406422813"}, {"full": "De Maio Gerardo", "first": "Gerardo", "phone": "+3934644267"}, {"full": "De Maio Nicoletta", "first": "Nicoletta", "phone": "+393484414230"}, {"full": "Della Sala Alessio", "first": "Alessio", "phone": "+393496569444"}, {"full": "Giannatiempo Concetta", "first": "Concetta", "phone": "+393400885966"}, {"full": "Giannatiempo Pasquale", "first": "Pasquale", "phone": "+393397230229"}, {"full": "Granozio Anacleto", "first": "Anacleto", "phone": "+393889784305"}, {"full": "Granozio Giuseppina", "first": "Giuseppina", "phone": "+393429375519"}, {"full": "Ignarro Cristina", "first": "Cristina", "phone": "+393392661784"}, {"full": "Pellegrino Benito", "first": "Benito", "phone": "+393808671683"}, {"full": "Pellegrino Noemi", "first": "Noemi", "phone": "+393275428780"}, {"full": "Procida Franca", "first": "Franca", "phone": "+393286558183"}, {"full": "Procida Paolo", "first": "Paolo", "phone": "+393388150535"}, {"full": "Salviati Angela", "first": "Angela", "phone": "+393382510257"}, {"full": "Salviati Mario", "first": "Mario", "phone": "+393393898171"}];
-const KEY = 'procida_presence_v2';
+const KEY = 'procida_presence_v3';
 
 function loadState() { try { return JSON.parse(localStorage.getItem(KEY)) || {}; } catch(e) { return {}; } }
 function saveState(s) { localStorage.setItem(KEY, JSON.stringify(s)); }
