@@ -1,27 +1,33 @@
+
 <!doctype html>
 <html lang="it">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>GRUPPO PROCIDA</title>
+<title>GDS</title>
+
 <link rel="manifest" href="manifest.json">
-<link rel="stylesheet" href="styles.css?v=3">
-<meta name="theme-color" content="#1c44ff">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="GDS">
+<meta name="theme-color" content="#7f6bd8">
+<link rel="stylesheet" href="styles.css?v=4">
+
 <script>
 if ('serviceWorker' in navigator) { window.addEventListener('load', ()=> navigator.serviceWorker.register('./sw.js')); }
 function forceUpdate() {
   if (navigator.serviceWorker?.controller) {
-    navigator.serviceWorker.controller.postMessage({ type: 'SKIP_WAITING' });
-  }
-  caches.keys().then(keys => keys.forEach(k => caches.delete(k))).finally(()=> location.reload(true));
+    caches.keys().then(keys => Promise.all(keys.map(k => caches.delete(k)))).finally(()=> location.href = './?v=4');
+  } else { location.href = './?v=4'; }
 }
 </script>
 </head>
 <body>
   <div class="container">
     <div class="header">
-      <div class="icon">👥</div>
-      <div class="title">GRUPPO PROCIDA</div>
+      <div class="icon"><img src="icon-192.png" alt="icon"></div>
+      <div class="title">GDS</div>
       <div class="badge">Installabile</div>
     </div>
 
@@ -32,19 +38,19 @@ function forceUpdate() {
           <div class="counter no" id="assenti">Assenti: 0</div>
         </div>
         <div style="display:flex; gap:8px;">
-          <button class="reset" onclick="forceUpdate()">Aggiorna app</button>
-          <button class="reset" id="resetBtn">Reset</button>
+          <button class="btn" onclick="forceUpdate()">Aggiorna app</button>
+          <button class="btn" id="resetBtn">Reset</button>
         </div>
       </div>
       <div class="list" id="list"></div>
     </div>
 
-    <div class="footer">Stato salvato sul dispositivo. • Tap per marcare, WhatsApp per messaggio rapido, Reset per azzerare.</div>
+    <div class="footer">Android: Chrome → ⋮ → Aggiungi a schermata Home • iPad: Safari → Condividi → Aggiungi a Home</div>
   </div>
 
 <script>
 const ENTRIES = [{"full": "Celano Gerardina", "first": "Gerardina", "phone": "+393393156011"}, {"full": "Celano Gerardo", "first": "Gerardo", "phone": "+393405436406"}, {"full": "Celano Maria", "first": "Maria", "phone": "+393891014974"}, {"full": "D'aiutolo Maria", "first": "Maria", "phone": "+393406422813"}, {"full": "De Maio Gerardo", "first": "Gerardo", "phone": "+3934644267"}, {"full": "De Maio Nicoletta", "first": "Nicoletta", "phone": "+393484414230"}, {"full": "Della Sala Alessio", "first": "Alessio", "phone": "+393496569444"}, {"full": "Giannatiempo Concetta", "first": "Concetta", "phone": "+393400885966"}, {"full": "Giannatiempo Pasquale", "first": "Pasquale", "phone": "+393397230229"}, {"full": "Granozio Anacleto", "first": "Anacleto", "phone": "+393889784305"}, {"full": "Granozio Giuseppina", "first": "Giuseppina", "phone": "+393429375519"}, {"full": "Ignarro Cristina", "first": "Cristina", "phone": "+393392661784"}, {"full": "Pellegrino Benito", "first": "Benito", "phone": "+393808671683"}, {"full": "Pellegrino Noemi", "first": "Noemi", "phone": "+393275428780"}, {"full": "Procida Franca", "first": "Franca", "phone": "+393286558183"}, {"full": "Procida Paolo", "first": "Paolo", "phone": "+393388150535"}, {"full": "Salviati Angela", "first": "Angela", "phone": "+393382510257"}, {"full": "Salviati Mario", "first": "Mario", "phone": "+393393898171"}];
-const KEY = 'procida_presence_v3';
+const KEY = 'gds_presence_v4';
 
 function loadState() { try { return JSON.parse(localStorage.getItem(KEY)) || {}; } catch(e) { return {}; } }
 function saveState(s) { localStorage.setItem(KEY, JSON.stringify(s)); }
@@ -55,7 +61,7 @@ function computeCounts(state) {
 }
 function waUrl(entry) {
   if (!entry.phone) return null;
-  const msg = `Ciao ${entry.first}, questa sera non ti ho visto in sala, come stai? un abbraccio`;
+  const msg = `Ciao ${entry.first}, questa sera non ti ho visto in sala, come stai? un abbraccio 🤗`;
   const encoded = encodeURIComponent(msg);
   const phone = (entry.phone || '').replace(/[^\d+]/g,'');
   return `https://wa.me/${phone}?text=${encoded}`;
@@ -69,13 +75,17 @@ function render() {
     const wrap = document.createElement('div');
     wrap.className = 'item';
 
+    const toggle = document.createElement('div');
+    toggle.className = 'toggle' + (state[entry.full] ? ' checked' : '');
+    toggle.addEventListener('click', (ev)=> { ev.stopPropagation(); state[entry.full] = !state[entry.full]; saveState(state); render(); });
+
     const name = document.createElement('div');
     name.className = 'name' + (state[entry.full] ? ' strike' : '');
     name.textContent = entry.full;
     name.addEventListener('click', ()=> { state[entry.full] = !state[entry.full]; saveState(state); render(); });
 
     const wa = document.createElement('button');
-    wa.className = 'btn';
+    wa.className = 'btn wa';
     if (entry.phone) {
       wa.textContent = 'WhatsApp';
       wa.addEventListener('click', (ev)=> {
@@ -86,16 +96,12 @@ function render() {
     } else {
       wa.textContent = 'No WA';
       wa.disabled = true;
-      wa.style.opacity = .5;
+      wa.style.opacity = .6;
     }
 
-    const toggle = document.createElement('div');
-    toggle.className = 'toggle' + (state[entry.full] ? ' checked' : '');
-    toggle.addEventListener('click', (ev)=> { ev.stopPropagation(); state[entry.full] = !state[entry.full]; saveState(state); render(); });
-
+    wrap.appendChild(toggle);
     wrap.appendChild(name);
     wrap.appendChild(wa);
-    wrap.appendChild(toggle);
     list.appendChild(wrap);
   });
   const c = computeCounts(state);
