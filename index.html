@@ -1,25 +1,22 @@
-
 <!doctype html>
 <html lang="it">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>GDS</title>
-
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="GDS">
 <meta name="theme-color" content="#7f6bd8">
-<link rel="stylesheet" href="styles.css?v=4">
-
+<link rel="stylesheet" href="styles.css?v=5">
 <script>
 if ('serviceWorker' in navigator) { window.addEventListener('load', ()=> navigator.serviceWorker.register('./sw.js')); }
 function forceUpdate() {
   if (navigator.serviceWorker?.controller) {
-    caches.keys().then(keys => Promise.all(keys.map(k => caches.delete(k)))).finally(()=> location.href = './?v=4');
-  } else { location.href = './?v=4'; }
+    caches.keys().then(keys => Promise.all(keys.map(k => caches.delete(k)))).finally(()=> location.href = './?v=5');
+  } else { location.href = './?v=5'; }
 }
 </script>
 </head>
@@ -30,7 +27,6 @@ function forceUpdate() {
       <div class="title">GDS</div>
       <div class="badge">Installabile</div>
     </div>
-
     <div class="card">
       <div class="toolbar">
         <div class="counters">
@@ -44,61 +40,46 @@ function forceUpdate() {
       </div>
       <div class="list" id="list"></div>
     </div>
-
     <div class="footer">Android: Chrome → ⋮ → Aggiungi a schermata Home • iPad: Safari → Condividi → Aggiungi a Home</div>
   </div>
-
 <script>
-const ENTRIES = [{"full": "Celano Gerardina", "first": "Gerardina", "phone": "+393393156011"}, {"full": "Celano Gerardo", "first": "Gerardo", "phone": "+393405436406"}, {"full": "Celano Maria", "first": "Maria", "phone": "+393891014974"}, {"full": "D'aiutolo Maria", "first": "Maria", "phone": "+393406422813"}, {"full": "De Maio Gerardo", "first": "Gerardo", "phone": "+3934644267"}, {"full": "De Maio Nicoletta", "first": "Nicoletta", "phone": "+393484414230"}, {"full": "Della Sala Alessio", "first": "Alessio", "phone": "+393496569444"}, {"full": "Giannatiempo Concetta", "first": "Concetta", "phone": "+393400885966"}, {"full": "Giannatiempo Pasquale", "first": "Pasquale", "phone": "+393397230229"}, {"full": "Granozio Anacleto", "first": "Anacleto", "phone": "+393889784305"}, {"full": "Granozio Giuseppina", "first": "Giuseppina", "phone": "+393429375519"}, {"full": "Ignarro Cristina", "first": "Cristina", "phone": "+393392661784"}, {"full": "Pellegrino Benito", "first": "Benito", "phone": "+393808671683"}, {"full": "Pellegrino Noemi", "first": "Noemi", "phone": "+393275428780"}, {"full": "Procida Franca", "first": "Franca", "phone": "+393286558183"}, {"full": "Procida Paolo", "first": "Paolo", "phone": "+393388150535"}, {"full": "Salviati Angela", "first": "Angela", "phone": "+393382510257"}, {"full": "Salviati Mario", "first": "Mario", "phone": "+393393898171"}];
-const KEY = 'gds_presence_v4';
-
-function loadState() { try { return JSON.parse(localStorage.getItem(KEY)) || {}; } catch(e) { return {}; } }
-function saveState(s) { localStorage.setItem(KEY, JSON.stringify(s)); }
-function computeCounts(state) {
-  let pres = 0;
-  for (const e of ENTRIES) if (state[e.full]) pres++;
-  return { pres, ass: ENTRIES.length - pres };
-}
-function waUrl(entry) {
-  if (!entry.phone) return null;
-  const msg = `Ciao ${entry.first}, questa sera non ti ho visto in sala, come stai? un abbraccio 🤗`;
+const ENTRIES = [{"full":"Celano Gerardina","first":"Gerardina","phone":"+393393156011"},{"full":"Celano Gerardo","first":"Gerardo","phone":"+393405436406"},{"full":"Celano Maria","first":"Maria","phone":"+393891014974"},{"full":"D'aiutolo Maria","first":"Maria","phone":"+393406422813"},{"full":"De Maio Gerardo","first":"Gerardo","phone":"+3934644267"},{"full":"De Maio Nicoletta","first":"Nicoletta","phone":"+393484414230"},{"full":"Della Sala Alessio","first":"Alessio","phone":"+393496569444"},{"full":"Giannatiempo Concetta","first":"Concetta","phone":"+393400885966"},{"full":"Giannatiempo Pasquale","first":"Pasquale","phone":"+393397230229"},{"full":"Granozio Anacleto","first":"Anacleto","phone":"+393889784305"},{"full":"Granozio Giuseppina","first":"Giuseppina","phone":"+393429375519"},{"full":"Ignarro Cristina","first":"Cristina","phone":"+393392661784"},{"full":"Pellegrino Benito","first":"Benito","phone":"+393808671683"},{"full":"Pellegrino Noemi","first":"Noemi","phone":"+393275428780"},{"full":"Procida Franca","first":"Franca","phone":"+393286558183"},{"full":"Procida Paolo","first":"Paolo","phone":"+393388150535"},{"full":"Salviati Angela","first":"Angela","phone":"+393382510257"},{"full":"Salviati Mario","first":"Mario","phone":"+393393898171"}];
+const MESSAGE_SUFFIX = " un abbraccio 🤗";
+const KEY = "gds_presence_v5";
+function loadState(){ try { return JSON.parse(localStorage.getItem(KEY)) || {}; } catch(e){ return {}; } }
+function saveState(s){ localStorage.setItem(KEY, JSON.stringify(s)); }
+function computeCounts(state){ let pres=0; for(const e of ENTRIES) if(state[e.full]) pres++; return {pres,ass:ENTRIES.length-pres}; }
+function waUrl(entry){
+  if(!entry.phone) return null;
+  const msg = `Ciao ${entry.first}, questa sera non ti ho visto in sala, come stai?${MESSAGE_SUFFIX}`;
   const encoded = encodeURIComponent(msg);
   const phone = (entry.phone || '').replace(/[^\d+]/g,'');
   return `https://wa.me/${phone}?text=${encoded}`;
 }
-
-function render() {
+function render(){
   const state = loadState();
   const list = document.getElementById('list');
   list.innerHTML = '';
   ENTRIES.forEach(entry => {
     const wrap = document.createElement('div');
     wrap.className = 'item';
-
     const toggle = document.createElement('div');
     toggle.className = 'toggle' + (state[entry.full] ? ' checked' : '');
-    toggle.addEventListener('click', (ev)=> { ev.stopPropagation(); state[entry.full] = !state[entry.full]; saveState(state); render(); });
-
+    toggle.addEventListener('click', ev => { ev.stopPropagation(); state[entry.full] = !state[entry.full]; saveState(state); render(); });
     const name = document.createElement('div');
     name.className = 'name' + (state[entry.full] ? ' strike' : '');
     name.textContent = entry.full;
     name.addEventListener('click', ()=> { state[entry.full] = !state[entry.full]; saveState(state); render(); });
-
     const wa = document.createElement('button');
     wa.className = 'btn wa';
     if (entry.phone) {
       wa.textContent = 'WhatsApp';
-      wa.addEventListener('click', (ev)=> {
-        ev.stopPropagation();
-        const url = waUrl(entry);
-        if (url) window.open(url, '_blank');
-      });
+      wa.addEventListener('click', ev => { ev.stopPropagation(); const url = waUrl(entry); if (url) window.open(url, '_blank'); });
     } else {
       wa.textContent = 'No WA';
       wa.disabled = true;
       wa.style.opacity = .6;
     }
-
     wrap.appendChild(toggle);
     wrap.appendChild(name);
     wrap.appendChild(wa);
@@ -108,7 +89,6 @@ function render() {
   document.getElementById('presenti').textContent = 'Presenti: ' + c.pres;
   document.getElementById('assenti').textContent = 'Assenti: ' + c.ass;
 }
-
 document.getElementById('resetBtn').addEventListener('click', ()=> { saveState({}); render(); });
 render();
 </script>
