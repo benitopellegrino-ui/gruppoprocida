@@ -1,3 +1,4 @@
+
 :root{--bg:#7f6bd8;--card:rgba(0,0,0,.45);--border:rgba(255,255,255,.08);--text:#fff;--muted:rgba(255,255,255,.7);}
 *{box-sizing:border-box} html,body{height:100%} body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,'Helvetica Neue',Arial;color:var(--text);background:var(--bg);}
 .container{width:min(100%,900px);margin:0 auto;padding:clamp(10px,2vw,20px);}
