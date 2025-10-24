@@ -1,7 +1,7 @@
 {
   "name": "GDS",
   "short_name": "GDS",
-  "description": "Checklist presenze con WhatsApp, report ed elenco importabile da CSV (locale).",
+  "description": "Checklist presenze con WhatsApp, report, import CSV e nome gruppo personalizzabile.",
   "icons": [
     {
       "src": "icon-192.png",
@@ -34,8 +34,8 @@
       "purpose": "maskable"
     }
   ],
-  "start_url": "./?v=11",
+  "start_url": "./?v=12",
   "display": "standalone",
-  "background_color": "#5d3fc2",
-  "theme_color": "#5d3fc2"
+  "background_color": "#43257D",
+  "theme_color": "#43257D"
 }

@@ -3,17 +3,20 @@
 <title>GDS</title>
 <link rel="manifest" href="manifest.json"><link rel="apple-touch-icon" href="apple-touch-icon.png">
 <meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="apple-mobile-web-app-title" content="GDS"><meta name="theme-color" content="#5d3fc2">
-<link rel="stylesheet" href="styles.css?v11">
+<meta name="apple-mobile-web-app-title" content="GDS"><meta name="theme-color" content="#43257D">
+<link rel="stylesheet" href="styles.css?v12">
 <script>
 if('serviceWorker' in navigator){addEventListener('load',()=>navigator.serviceWorker.register('./sw.js'));}
-function forceUpdate(){if(navigator.serviceWorker?.controller){caches.keys().then(k=>Promise.all(k.map(c=>caches.delete(c)))).finally(()=>location.href='./?v11');}else{location.href='./?v11';}}
+function forceUpdate(){if(navigator.serviceWorker?.controller){caches.keys().then(k=>Promise.all(k.map(c=>caches.delete(c)))).finally(()=>location.href='./?v12');}else{location.href='./?v12';}}
 </script></head>
 <body>
 <div class="container">
   <div class="header">
     <div class="icon"><img src="icon-192.png" alt="icon"></div>
-    <div class="title">GDS</div>
+    <div class="titleWrap">
+      <div class="title">GDS</div>
+      <div class="subtitle">Gruppo: <span id="groupName">—</span> <button id="editGroupBtn" title="Modifica nome gruppo">✏️ Modifica</button></div>
+    </div>
     <div class="badge">Installabile</div>
   </div>
   <div class="card">
@@ -27,7 +30,7 @@ function forceUpdate(){if(navigator.serviceWorker?.controller){caches.keys().the
         <button class="btn" id="importBtn">Importa CSV</button>
         <button class="btn" id="exportListBtn">Esporta elenco</button>
         <button class="btn" id="templateBtn">Scarica template</button>
-        <input type="file" id="fileInput" accept=".csv" style="display:none">
+        <input type="file" id="fileInput" accept=".csv,text/csv" style="display:none">
       </div>
     </div>
     <div class="list" id="list"></div>
@@ -54,21 +57,25 @@ function forceUpdate(){if(navigator.serviceWorker?.controller){caches.keys().the
 </div>
 
 <script>
-// ====== DATA & STORAGE ======
+// ===== Storage helpers
+const KEY="gds_presence_v12", MSG_KEY="gds_messaged_v12", REP_KEY="gds_reports_v12", ENTRIES_KEY="gds_entries_v12", GROUP_KEY="gds_groupname_v12";
+function load(k,f){ try{ return JSON.parse(localStorage.getItem(k)) || f; }catch(e){ return f; } }
+function save(k,v){ localStorage.setItem(k, JSON.stringify(v)); }
+
+// ===== Default entries (fallback) 
 const DEFAULT_ENTRIES = [{"full":"Celano Gerardina","first":"Gerardina","phone":"+393393156011"},{"full":"Celano Gerardo","first":"Gerardo","phone":"+393405436406"},{"full":"Celano Maria","first":"Maria","phone":"+393891014974"},{"full":"D'aiutolo Maria","first":"Maria","phone":"+393406422813"},{"full":"De Maio Gerardo","first":"Gerardo","phone":"+3934644267"},{"full":"De Maio Nicoletta","first":"Nicoletta","phone":"+393484414230"},{"full":"Della Sala Alessio","first":"Alessio","phone":"+393496569444"},{"full":"Giannatiempo Concetta","first":"Concetta","phone":"+393400885966"},{"full":"Giannatiempo Pasquale","first":"Pasquale","phone":"+393397230229"},{"full":"Granozio Anacleto","first":"Anacleto","phone":"+393889784305"},{"full":"Granozio Giuseppina","first":"Giuseppina","phone":"+393429375519"},{"full":"Ignarro Cristina","first":"Cristina","phone":"+393392661784"},{"full":"Pellegrino Benito","first":"Benito","phone":"+393808671683"},{"full":"Pellegrino Noemi","first":"Noemi","phone":"+393275428780"},{"full":"Procida Franca","first":"Franca","phone":"+393286558183"},{"full":"Procida Paolo","first":"Paolo","phone":"+393388150535"},{"full":"Salviati Angela","first":"Angela","phone":"+393382510257"},{"full":"Salviati Mario","first":"Mario","phone":"+393393898171"}];
-const MESSAGE_SUFFIX = " un abbraccio 🤗";
-const KEY="gds_presence_v11"; const MSG_KEY="gds_messaged_v11"; const REP_KEY="gds_reports_v11"; const ENTRIES_KEY="gds_entries_v11";
-function load(k,f){try{return JSON.parse(localStorage.getItem(k))||f;}catch(e){return f;}}
-function save(k,v){localStorage.setItem(k,JSON.stringify(v));}
 function getEntries(){ return load(ENTRIES_KEY, DEFAULT_ENTRIES); }
-function setEntries(arr){ save(ENTRIES_KEY, arr); /* reset states */ save(KEY,{}); save(MSG_KEY,{}); render(); }
+function setEntries(arr){ save(ENTRIES_KEY, arr); save(KEY,{}); save(MSG_KEY,{}); render(); }
 
-function computeCounts(s){let p=0; for(const e of getEntries()) if(s[e.full]) p++; return {pres:p,ass:getEntries().length-p}; }
-function waUrl(e){ if(!e.phone) return null; const msg=`Ciao ${e.first}, questa sera non ti ho visto in sala, come stai?${MESSAGE_SUFFIX}`; return 'https://wa.me/'+(e.phone||'').replace(/[^\d+]/g,'')+'?text='+encodeURIComponent(msg);}
-function todayLabel(){return new Date().toISOString().slice(0,10);}
-function meetingType(d){const day=(d||new Date()).getDay(); return day===0?'domenica':(day===3?'mercoledì':'altro');}
+// ===== Group name UI
+function renderGroupName(){ const n = load(GROUP_KEY, ""); document.getElementById('groupName').textContent = n || "—"; }
+document.getElementById('editGroupBtn').onclick = ()=>{ const cur=load(GROUP_KEY,""); const v=prompt("Nome del tuo gruppo", cur||""); if(v===null) return; save(GROUP_KEY, String(v).trim()); renderGroupName(); };
 
-// ====== RENDER LIST ======
+// ===== Counters & list
+function computeCounts(state){ let pres=0; for(const e of getEntries()) if(state[e.full]) pres++; return {pres, ass: getEntries().length-pres}; }
+const MESSAGE_SUFFIX = " un abbraccio 🤗";
+function waUrl(e){ if(!e.phone) return null; const msg = `Ciao ${e.first}, questa sera non ti ho visto in sala, come stai?${MESSAGE_SUFFIX}`; return 'https://wa.me/'+(e.phone||'').replace(/[^\d+]/g,'')+'?text='+encodeURIComponent(msg);}
+
 function render(){ const state=load(KEY,{}), msg=load(MSG_KEY,{}), list=document.getElementById('list'); list.innerHTML='';
   const ENTRIES=getEntries();
   ENTRIES.forEach(e=>{ const row=document.createElement('div'); row.className='item'+(msg[e.full]?' messaged':''); 
@@ -77,12 +84,17 @@ function render(){ const state=load(KEY,{}), msg=load(MSG_KEY,{}), list=document
     const w=document.createElement('button'); w.className='btn wa'; if(e.phone){ w.textContent='WhatsApp'; w.onclick=(ev)=>{ev.stopPropagation(); const u=waUrl(e); if(u) window.open(u,'_blank'); const m=load(MSG_KEY,{}); m[e.full]=true; save(MSG_KEY,m); render();}; } else { w.textContent='No WA'; w.disabled=true; w.style.opacity=.6; }
     row.appendChild(t); row.appendChild(n); row.appendChild(w); list.appendChild(row); });
   const c=computeCounts(state); document.getElementById('presenti').textContent='Presenti: '+c.pres; document.getElementById('assenti').textContent='Assenti: '+c.ass; }
-document.getElementById('resetBtn').onclick=()=>{save(KEY,{}); save(MSG_KEY,{}); render();};
+document.getElementById('resetBtn').onclick=()=>{ save(KEY,{}); save(MSG_KEY,{}); render(); };
 
-// ====== REPORTS ======
+// ===== Reports
+function todayLabel(){return new Date().toISOString().slice(0,10);}
+function meetingType(d){const day=(d||new Date()).getDay(); return day===0?'domenica':(day===3?'mercoledì':'altro');}
 document.getElementById('saveReportBtn').onclick=()=>{ const s=load(KEY,{}); const ENTRIES=getEntries(); const rep=load(REP_KEY,[]);
-  rep.push({date:todayLabel(), type:meetingType(), presenti:ENTRIES.filter(e=>s[e.full]).map(e=>e.full), assenti:ENTRIES.filter(e=>!s[e.full]).map(e=>e.full)}); save(REP_KEY,rep); alert('Report salvato'); };
-const modal=document.getElementById('reportModal'); document.getElementById('viewReportBtn').onclick=()=>openReport(); document.getElementById('closeModalBtn').onclick=()=>modal.classList.remove('open');
+  rep.push({date:todayLabel(), type:meetingType(), presenti:ENTRIES.filter(e=>s[e.full]).map(e=>e.full), assenti:ENTRIES.filter(e=>!s[e.full]).map(e=>e.full)});
+  save(REP_KEY,rep); alert('Report salvato'); };
+
+const modal=document.getElementById('reportModal');
+document.getElementById('viewReportBtn').onclick=()=>openReport(); document.getElementById('closeModalBtn').onclick=()=>modal.classList.remove('open');
 function openReport(){ modal.classList.add('open'); const reps=load(REP_KEY,[]); const months=[...new Set(reps.map(r=>r.date.slice(0,7)))].sort().reverse(); const sel=document.getElementById('monthSelect'); sel.innerHTML=months.map(m=>'<option value="'+m+'">'+m+'</option>').join(''); if(!sel.value&&months.length) sel.value=months[0]; buildReport(); }
 document.getElementById('monthSelect').addEventListener('change', buildReport); document.getElementById('chkWed').addEventListener('change', buildReport); document.getElementById('chkSun').addEventListener('change', buildReport);
 function buildReport(){ const reps=load(REP_KEY,[]), month=document.getElementById('monthSelect').value, w=document.getElementById('chkWed').checked, s=document.getElementById('chkSun').checked; const ENTRIES=getEntries();
@@ -92,28 +104,30 @@ function buildReport(){ const reps=load(REP_KEY,[]), month=document.getElementBy
   const data=Array.from(stats.entries()).map(([name,st])=>{return {name, presenti:st.presenti, assenti:st.assenti, assDates:st.assDates};}).sort((a,b)=>b.assenti-a.assenti);
   const tbody=document.querySelector('#reportTable tbody'); tbody.innerHTML=data.map(d=>'<tr><td>'+d.name+'</td><td>'+d.presenti+'</td><td>'+d.assenti+'</td><td>'+d.assDates.map(x=>'<span class="badgeTag">'+x+'</span>').join('')+'</td></tr>').join('');
   document.getElementById('reportSummary').textContent = rows.length ? ('Report per '+month+' — tot incontri: '+rows.length) : 'Nessun dato per i filtri selezionati.'; }
-document.getElementById('exportCsvBtn').onclick=()=>{ const reps=load(REP_KEY,[]); if(!reps.length) return alert('Nessun report salvato'); function esc(s){return '"'+String(s).replace(/"/g,'""')+'"';} const csv=['date,type,presenti,assenti'].concat(reps.map(r=>[r.date,r.type,r.presenti.join('; '),r.assenti.join('; ')].map(esc).join(','))).join('\n'); const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='gds-report.csv'; a.click(); URL.revokeObjectURL(a.href); };
-document.getElementById('exportPdfBtn').onclick=()=>{ const w=window.open('','_blank'); const html=document.querySelector('#reportTable').outerHTML; const summary=document.getElementById('reportSummary').textContent; const parts=[]; parts.push('<!doctype html><html><head><meta charset="utf-8"><title>Report GDS</title><style>body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial;padding:16px;}h2{margin:0 0 8px 0;}table{width:100%;border-collapse:collapse;}th,td{border:1px solid #ddd;padding:8px;font-size:12px;}th{background:#f0f0f0;}.muted{color:#555;margin-bottom:8px;}</style></head><body>'); parts.push('<h2>Report GDS</h2>'); parts.push('<div class="muted">'+summary+'</div>'); parts.push(html); parts.push('<script>window.onload=function(){window.print();}<'+'/script></body></html>'); w.document.write(parts.join('')); w.document.close(); };
+document.getElementById('exportCsvBtn').onclick=()=>{ const reps=load(REP_KEY,[]); if(!reps.length) return alert('Nessun report salvato'); function esc(s){return '"'+String(s).replace(/"/g,'""')+'"';} const csv=['date,type,presenti,assenti'].concat(reps.map(r=>[r.date,r.type,r.presenti.join('; '),r.assenti.join('; ')].map(esc).join(','))).join('\n'); 
+  const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8;'})); a.download='gds-report.csv'; document.body.appendChild(a); a.click(); setTimeout(()=>{URL.revokeObjectURL(a.href); a.remove();},0); };
+document.getElementById('exportPdfBtn').onclick=()=>{ const w=window.open('','_blank'); const html=document.querySelector('#reportTable').outerHTML; const summary=document.getElementById('reportSummary').textContent; const parts=[]; parts.push('<!doctype html><html><head><meta charset="utf-8"><title>Report GDS</title><style>body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial;padding:16px;}h2{margin:0 0 8px 0;}table{width:100%;border-collapse:collapse;}th,td{border:1px solid #ddd;padding:8px;font-size:12px;}th{background:#f0f0f0;}.muted{color:#555;margin-bottom:8px;}</style></head><body>'); parts.push('<h2>Report GDS</h2>'); parts.push('<div class="muted">'+summary+'</div>'); parts.push(html); parts.push('<script>window.onload=function(){window.print();}</'+'script></body></html>'); w.document.write(parts.join('')); w.document.close(); };
 
-// ====== IMPORT / EXPORT ENTRIES ======
+// ===== Import/Export entries
 document.getElementById('importBtn').onclick=()=>document.getElementById('fileInput').click();
-document.getElementById('fileInput').addEventListener('change', (e)=>{ const f=e.target.files[0]; if(!f) return; const reader=new FileReader(); reader.onload=()=>{ try{ const text=reader.result; const entries=parseCSVToEntries(text); if(!entries.length) return alert('CSV vuoto o non riconosciuto'); if(!confirm('Sostituire l\'elenco attuale con '+entries.length+' nominativi?')) return; setEntries(entries); alert('Elenco importato con successo'); }catch(err){ alert('Errore importazione: '+err.message); } }; reader.readAsText(f, 'utf-8'); });
+document.getElementById('fileInput').addEventListener('change', (e)=>{ const f=e.target.files[0]; if(!f) return; const reader=new FileReader(); reader.onload=()=>{ try{ const text=reader.result; const entries=parseCSVToEntries(text); if(!entries.length) return alert('CSV vuoto o non riconosciuto'); if(!confirm('Sostituire l\'elenco attuale con '+entries.length+' nominativi?')) return; setEntries(entries); alert('Elenco importato con successo'); }catch(err){ alert('Errore importazione: '+err.message); } }; reader.readAsText(f); });
 
-document.getElementById('exportListBtn').onclick=()=>{ const ENTRIES=getEntries(); function esc(s){return '"'+String(s).replace(/"/g,'""')+'"';} const header='lastname,firstname,cellphone'; const csv=[header].concat(ENTRIES.map(e=>esc(e.full.split(' ')[0])+','+esc(e.full.split(' ').slice(1).join(' '))+','+esc(e.phone||'') ) ).join('\n'); const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='gds-elenco.csv'; a.click(); URL.revokeObjectURL(a.href); };
+document.getElementById('exportListBtn').onclick=()=>{ const ENTRIES=getEntries(); function esc(s){return '"'+String(s).replace(/"/g,'""')+'"';} const header='lastname,firstname,cellphone'; const csv=[header].concat(ENTRIES.map(e=>esc(e.full.split(' ')[0])+','+esc(e.full.split(' ').slice(1).join(' '))+','+esc(e.phone||'') ) ).join('\n'); 
+  const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8;'})); a.download='gds-elenco.csv'; document.body.appendChild(a); a.click(); setTimeout(()=>{URL.revokeObjectURL(a.href); a.remove();},0); };
 
-document.getElementById('templateBtn').onclick=()=>{ const tmpl='lastname,firstname,cellphone\nRossi,Mario,+39333111222\nBianchi,Luisa,+39344111222'; const blob=new Blob([tmpl],{type:'text/csv;charset=utf-8;'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='gds-template.csv'; a.click(); URL.revokeObjectURL(a.href); };
+document.getElementById('templateBtn').onclick=()=>{ const tmpl='lastname,firstname,cellphone\nRossi,Mario,+39333111222\nBianchi,Luisa,+39344111222'; 
+  const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([tmpl],{type:'text/csv;charset=utf-8;'})); a.download='gds-template.csv'; document.body.appendChild(a); a.click(); setTimeout(()=>{URL.revokeObjectURL(a.href); a.remove();},0); };
 
-// CSV parser (supports , or ; and common header synonyms)
+// CSV parser
 function parseCSVToEntries(text){ 
-  // normalize newlines
-  text=text.replace(/\r\n/g,'\n').trim();
+  text=String(text).replace(/\r\n/g,'\n').trim();
   const delim = (text.split('\n')[0].includes(';'))?';':',';
   const rows = text.split('\n').map(l=>l.split(delim).map(s=>s.replace(/^\s*"|"\s*$/g,'').trim()));
   if(!rows.length) return [];
   const head = rows[0].map(h=>h.toLowerCase());
   function pick(cols){ for(const c of cols){ const i=head.indexOf(c); if(i>-1) return i; } return -1; }
   const iLast=pick(['lastname','cognome']); const iFirst=pick(['firstname','nome']); const iCell=pick(['cellphone','telefono','phone','cellulare']); const iHome=pick(['homephone','fisso']);
-  if(iLast<0 or iFirst<0) throw new Error('Intestazioni mancanti: servono lastname/cognome e firstname/nome');
+  if(iLast<0 || iFirst<0) throw new Error('Intestazioni mancanti: servono lastname/cognome e firstname/nome');
   const out=[];
   for(let i=1;i<rows.length;i++){ const r=rows[i]; if(!r.length) continue; const last=(r[iLast]||'').trim(); const first=(r[iFirst]||'').trim(); if(!last||!first) continue; let phone=(iCell>-1 && r[iCell])?r[iCell]:(iHome>-1?r[iHome]:null); phone=normalizePhone(phone); out.push({full:(last+' '+first).trim(), first:first, phone:phone}); }
   out.sort((a,b)=>a.full.localeCompare(b.full,'it'));
@@ -121,6 +135,8 @@ function parseCSVToEntries(text){
 }
 function normalizePhone(s){ if(!s) return null; s=String(s).replace(/\D+/g,''); if(!s) return null; if(s.startsWith('00')) return '+'+s.slice(2); if(s.startsWith('39')&&s.length>=10) return '+'+s; if('30'.includes(s[0])) return '+39'+s; return s.startsWith('+')?s:'+'+s; }
 
+// Init
+renderGroupName();
 render();
 </script>
 </body></html>

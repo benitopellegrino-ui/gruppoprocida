@@ -2,12 +2,15 @@
 :root{--text:#fff;--muted:rgba(255,255,255,.75);--card:rgba(0,0,0,.45);--border:rgba(255,255,255,.08);
 --sent:#62e877; --sentBg: rgba(98,232,119,.18);}
 *{box-sizing:border-box} html,body{height:100%} body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,'Helvetica Neue',Arial;color:var(--text);
-background: linear-gradient(180deg, rgb(122, 90, 219) 0%, rgb(93, 63, 194) 100%);}
+background: #43257D;}
 .container{width:min(100%,900px);margin:0 auto;padding:clamp(10px,2vw,20px);}
-.header{display:flex;align-items:center;gap:12px;margin:8px 0 14px}
+.header{display:flex;align-items:flex-start;gap:12px;margin:8px 0 14px;flex-wrap:wrap}
 .icon{width:44px;height:44px;border-radius:12px;overflow:hidden;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.12)}
 .icon img{width:100%;height:100%;object-fit:cover}
-.title{font-size:clamp(18px,3.5vw,24px);font-weight:800;letter-spacing:.4px}
+.titleWrap{display:flex;flex-direction:column}
+.title{font-size:clamp(18px,3.5vw,24px);font-weight:800;letter-spacing:.4px;line-height:1}
+.subtitle{opacity:.9;margin-top:4px;display:flex;align-items:center;gap:8px; font-size:clamp(12px,2.5vw,14px);}
+.subtitle button{border:1px solid var(--border);background:rgba(255,255,255,.08);color:var(--text);border-radius:8px;padding:4px 8px;cursor:pointer;font-size:12px;}
 .badge{margin-left:auto;background:rgba(255,255,255,.12);color:var(--text);padding:6px 12px;border-radius:999px;font-size:clamp(11px,2.2vw,13px)}
 .card{background:var(--card);border:1px solid var(--border);border-radius:18px;overflow:hidden;backdrop-filter:blur(10px);}
 .toolbar{display:flex;gap:8px;align-items:center;justify-content:space-between;padding:12px;border-bottom:1px solid var(--border);}
