@@ -1,7 +1,7 @@
 {
   "name": "GDS",
   "short_name": "GDS",
-  "description": "Checklist presenze con WhatsApp rapido, contatori e salvataggio locale.",
+  "description": "Checklist presenze con WhatsApp, contatori, stato, e report con esportazione.",
   "icons": [
     {
       "src": "icon-192.png",
@@ -34,7 +34,7 @@
       "purpose": "maskable"
     }
   ],
-  "start_url": "./?v=7",
+  "start_url": "./?v=8",
   "display": "standalone",
   "background_color": "#7f6bd8",
   "theme_color": "#7f6bd8"

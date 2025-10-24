@@ -10,13 +10,13 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="GDS">
 <meta name="theme-color" content="#7f6bd8">
-<link rel="stylesheet" href="styles.css?v7">
+<link rel="stylesheet" href="styles.css?v8">
 <script>
 if ('serviceWorker' in navigator) { window.addEventListener('load', ()=> navigator.serviceWorker.register('./sw.js')); }
 function forceUpdate() {
   if (navigator.serviceWorker?.controller) {
-    caches.keys().then(keys => Promise.all(keys.map(k => caches.delete(k)))).finally(()=> location.href = './?v7');
-  } else { location.href = './?v7'; }
+    caches.keys().then(keys => Promise.all(keys.map(k => caches.delete(k)))).finally(()=> location.href = './?v8');
+  } else { location.href = './?v8'; }
 }
 </script>
 </head>
@@ -34,9 +34,11 @@ function forceUpdate() {
           <div class="counter ok" id="presenti">Presenti: 0</div>
           <div class="counter no" id="assenti">Assenti: 0</div>
         </div>
-        <div style="display:flex; gap:8px;">
+        <div class="actions">
           <button class="btn" onclick="forceUpdate()">Aggiorna app</button>
           <button class="btn" id="resetBtn">Reset</button>
+          <button class="btn primary" id="saveReportBtn">Registra report</button>
+          <button class="btn" id="viewReportBtn">Visualizza report</button>
         </div>
       </div>
       <div class="list" id="list"></div>
@@ -45,13 +47,47 @@ function forceUpdate() {
     <div class="footer">Android: Chrome → ⋮ → Aggiungi a schermata Home • iPad: Safari → Condividi → Aggiungi a Home</div>
   </div>
 
+  <!-- Report Modal -->
+  <div class="modal" id="reportModal" aria-hidden="true">
+    <div class="modal-card">
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <h3>Report presenze</h3>
+        <button class="btn" id="closeModalBtn">Chiudi</button>
+      </div>
+      <div class="filters">
+        <label>Mese:
+          <select id="monthSelect"></select>
+        </label>
+        <label><input type="checkbox" id="chkWed" checked> Mercoledì</label>
+        <label><input type="checkbox" id="chkSun" checked> Domenica</label>
+        <button class="btn" id="exportCsvBtn">Esporta CSV</button>
+        <button class="btn" id="exportPdfBtn">Esporta PDF</button>
+      </div>
+      <div id="reportSummary" class="print-note"></div>
+      <table class="table" id="reportTable">
+        <thead><tr><th>Nome</th><th>Presenze</th><th>Assenze</th><th>Date assenze</th></tr></thead>
+        <tbody></tbody>
+      </table>
+      <div class="print-note">Suggerimento: nell'esportazione PDF verrà aperta una pagina stampabile — scegli "Salva come PDF".</div>
+    </div>
+  </div>
+
 <script>
 const ENTRIES = [{"full":"Celano Gerardina","first":"Gerardina","phone":"+393393156011"},{"full":"Celano Gerardo","first":"Gerardo","phone":"+393405436406"},{"full":"Celano Maria","first":"Maria","phone":"+393891014974"},{"full":"D'aiutolo Maria","first":"Maria","phone":"+393406422813"},{"full":"De Maio Gerardo","first":"Gerardo","phone":"+3934644267"},{"full":"De Maio Nicoletta","first":"Nicoletta","phone":"+393484414230"},{"full":"Della Sala Alessio","first":"Alessio","phone":"+393496569444"},{"full":"Giannatiempo Concetta","first":"Concetta","phone":"+393400885966"},{"full":"Giannatiempo Pasquale","first":"Pasquale","phone":"+393397230229"},{"full":"Granozio Anacleto","first":"Anacleto","phone":"+393889784305"},{"full":"Granozio Giuseppina","first":"Giuseppina","phone":"+393429375519"},{"full":"Ignarro Cristina","first":"Cristina","phone":"+393392661784"},{"full":"Pellegrino Benito","first":"Benito","phone":"+393808671683"},{"full":"Pellegrino Noemi","first":"Noemi","phone":"+393275428780"},{"full":"Procida Franca","first":"Franca","phone":"+393286558183"},{"full":"Procida Paolo","first":"Paolo","phone":"+393388150535"},{"full":"Salviati Angela","first":"Angela","phone":"+393382510257"},{"full":"Salviati Mario","first":"Mario","phone":"+393393898171"}];
 const MESSAGE_SUFFIX = " un abbraccio 🤗";
-const KEY = "gds_presence_v7";
-function loadState(){ try { return JSON.parse(localStorage.getItem(KEY)) || {}; } catch(e){ return {}; } }
-function saveState(s){ localStorage.setItem(KEY, JSON.stringify(s)); }
-function computeCounts(state){ let pres=0; for(const e of ENTRIES) if(state[e.full]) pres++; return {pres,ass:ENTRIES.length-pres}; }
+const KEY = "gds_presence_v8";
+const MSG_KEY = "gds_messaged_v8";
+const REP_KEY = "gds_reports_v8";
+
+function load(key, fallback){ try { return JSON.parse(localStorage.getItem(key)) || fallback; } catch(e) { return fallback; } }
+function save(key, val){ localStorage.setItem(key, JSON.stringify(val)); }
+
+function computeCounts(state){
+  let pres=0;
+  for(const e of ENTRIES) if(state[e.full]) pres++;
+  return {pres, ass: ENTRIES.length-pres};
+}
+
 function waUrl(entry){
   if(!entry.phone) return null;
   const msg = `Ciao ${entry.first}, questa sera non ti ho visto in sala, come stai?${MESSAGE_SUFFIX}`;
@@ -59,30 +95,57 @@ function waUrl(entry){
   const phone = (entry.phone || '').replace(/[^\d+]/g,'');
   return `https://wa.me/${phone}?text=${encoded}`;
 }
+
+function todayLabel(){
+  const d=new Date();
+  const yyyy=d.getFullYear(); const mm=String(d.getMonth()+1).padStart(2,'0'); const dd=String(d.getDate()).padStart(2,'0');
+  return `${yyyy}-${mm}-${dd}`;
+}
+function meetingType(d){
+  const day=(d||new Date()).getDay(); // 0 Sun, 3 Wed
+  if(day===0) return 'domenica';
+  if(day===3) return 'mercoledì';
+  return 'altro';
+}
+
 function render(){
-  const state = loadState();
+  const state = load(KEY, {});
+  const messaged = load(MSG_KEY, {});
   const list = document.getElementById('list');
   list.innerHTML = '';
   ENTRIES.forEach(entry => {
     const wrap = document.createElement('div');
-    wrap.className = 'item';
+    wrap.className = 'item' + (messaged[entry.full] ? ' messaged' : '');
+
     const toggle = document.createElement('div');
     toggle.className = 'toggle' + (state[entry.full] ? ' checked' : '');
-    toggle.addEventListener('click', ev => { ev.stopPropagation(); state[entry.full] = !state[entry.full]; saveState(state); render(); });
+    toggle.title = 'Segna presente/assente';
+    toggle.addEventListener('click', (ev)=> { ev.stopPropagation(); state[entry.full] = !state[entry.full]; save(KEY,state); render(); });
+
     const name = document.createElement('div');
     name.className = 'name' + (state[entry.full] ? ' strike' : '');
     name.textContent = entry.full;
-    name.addEventListener('click', ()=> { state[entry.full] = !state[entry.full]; saveState(state); render(); });
+    name.addEventListener('click', ()=> { state[entry.full] = !state[entry.full]; save(KEY,state); render(); });
+
     const wa = document.createElement('button');
     wa.className = 'btn wa';
     if (entry.phone) {
       wa.textContent = 'WhatsApp';
-      wa.addEventListener('click', ev => { ev.stopPropagation(); const url = waUrl(entry); if (url) window.open(url, '_blank'); });
+      wa.addEventListener('click', (ev)=> {
+        ev.stopPropagation();
+        const url = waUrl(entry);
+        if (url) window.open(url, '_blank');
+        // mark as messaged
+        messaged[entry.full] = true;
+        save(MSG_KEY, messaged);
+        render();
+      });
     } else {
       wa.textContent = 'No WA';
       wa.disabled = true;
       wa.style.opacity = .6;
     }
+
     wrap.appendChild(toggle);
     wrap.appendChild(name);
     wrap.appendChild(wa);
@@ -92,7 +155,104 @@ function render(){
   document.getElementById('presenti').textContent = 'Presenti: ' + c.pres;
   document.getElementById('assenti').textContent = 'Assenti: ' + c.ass;
 }
-document.getElementById('resetBtn').addEventListener('click', ()=> { saveState({}); render(); });
+
+document.getElementById('resetBtn').addEventListener('click', ()=> {
+  save(KEY, {});
+  save(MSG_KEY, {});
+  render();
+});
+
+// Save report
+document.getElementById('saveReportBtn').addEventListener('click', ()=> {
+  const state = load(KEY, {});
+  const date = todayLabel();
+  const type = meetingType();
+  const presenti = ENTRIES.filter(e => state[e.full]).map(e => e.full);
+  const assenti = ENTRIES.filter(e => !state[e.full]).map(e => e.full);
+  const reports = load(REP_KEY, []);
+  reports.push({ date, type, presenti, assenti });
+  save(REP_KEY, reports);
+  alert('Report salvato per ' + date + ' (' + type + ')');
+});
+
+// Modal open/close
+const modal = document.getElementById('reportModal');
+document.getElementById('viewReportBtn').addEventListener('click', ()=> { openReport(); });
+document.getElementById('closeModalBtn').addEventListener('click', ()=> modal.classList.remove('open'));
+
+function openReport(){
+  modal.classList.add('open');
+  // Populate month select
+  const reports = load(REP_KEY, []);
+  const months = [...new Set(reports.map(r => r.date.slice(0,7)))].sort().reverse();
+  const sel = document.getElementById('monthSelect');
+  sel.innerHTML = months.map(m => `<option value="${m}">${m}</option>`).join('');
+  if (!sel.value && months.length) sel.value = months[0];
+  buildReport();
+}
+document.getElementById('monthSelect').addEventListener('change', buildReport);
+document.getElementById('chkWed').addEventListener('change', buildReport);
+document.getElementById('chkSun').addEventListener('change', buildReport);
+
+function buildReport(){
+  const reports = load(REP_KEY, []);
+  const month = document.getElementById('monthSelect').value;
+  const w = document.getElementById('chkWed').checked;
+  const s = document.getElementById('chkSun').checked;
+  const rows = reports.filter(r => (!month || r.date.startsWith(month)) && ((w && r.type==='mercoledì') || (s && r.type==='domenica')));
+  const stats = new Map(); // name -> {presenti, assenti, assDates:[]}
+  ENTRIES.forEach(e => stats.set(e.full, {presenti:0, assenti:0, assDates:[]}));
+  rows.forEach(r => {
+    r.presenti.forEach(n => stats.get(n).presenti++);
+    r.assenti.forEach(n => { const st=stats.get(n); st.assenti++; st.assDates.push(r.date + ' ' + r.type); });
+  });
+  // Build table sorted by assenze desc
+  const data = Array.from(stats.entries()).map(([name,st])=>({name,...st})).sort((a,b)=> b.assenti - a.assenti);
+  const tbody = document.querySelector('#reportTable tbody');
+  tbody.innerHTML = data.map(d => `
+    <tr>
+      <td>${d.name}</td>
+      <td>${d.presenti}</td>
+      <td>${d.assenti}</td>
+      <td>${d.assDates.map(x=>`<span class="badgeTag">${x}</span>`).join('')} </td>
+    </tr>
+  `).join('');
+  document.getElementById('reportSummary').textContent = rows.length ? `Report per ${month} — tot incontri: ${rows.length}` : 'Nessun dato per i filtri selezionati.';
+}
+
+// Export CSV
+document.getElementById('exportCsvBtn').addEventListener('click', ()=> {
+  const reports = load(REP_KEY, []);
+  if(!reports.length) return alert('Nessun report salvato');
+  const header = ['date','type','presenti','assenti'];
+  const lines = [header.join(',')];
+  reports.forEach(r => lines.push([r.date, r.type, r.presenti.join('; '), r.assenti.join('; ')].map(x => `"${String(x).replace(/"/g,'""')}"`).join(',')));
+  const blob = new Blob([lines.join('\n')], {type:'text/csv;charset=utf-8;'});
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'gds-report.csv'; a.click(); URL.revokeObjectURL(a.href);
+});
+
+// Export PDF (printable window)
+document.getElementById('exportPdfBtn').addEventListener('click', ()=> {
+  const w = window.open('', '_blank');
+  const html = document.querySelector('#reportTable').outerHTML;
+  const summary = document.getElementById('reportSummary').textContent;
+  w.document.write(`<!doctype html><html><head><meta charset='utf-8'><title>Report GDS</title>
+  <style>
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial; padding: 16px; }
+    h2 { margin: 0 0 8px 0; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { border: 1px solid #ddd; padding: 8px; font-size: 12px; }
+    th { background: #f0f0f0; }
+    .muted { color: #555; margin-bottom: 8px; }
+  </style></head><body>
+  <h2>Report GDS</h2>
+  <div class='muted'>${summary}</div>
+  ${html}
+  <script>window.onload=()=>window.print()</script>
+  </body></html>`);
+  w.document.close();
+});
+
 render();
 </script>
 </body>
